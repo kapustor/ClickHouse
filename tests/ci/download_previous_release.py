@@ -4,10 +4,10 @@ import re
 import os
 import logging
 
-import requests
+import requests  # type: ignore
 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter  # type: ignore
+from urllib3.util.retry import Retry  # type: ignore
 
 CLICKHOUSE_TAGS_URL = "https://api.github.com/repos/ClickHouse/ClickHouse/tags"
 
@@ -101,9 +101,10 @@ def download_packet(url, out_path, retries=10, backoff_factor=0.3):
     session.mount("http://", adapter)
     session.mount("https://", adapter)
     response = session.get(url)
+    response.raise_for_status()
     print(url)
-    if response.ok:
-        open(out_path, "wb").write(response.content)
+    with open(out_path, "wb") as fd:
+        fd.write(response.content)
 
 
 def download_packets(release, dest_path=PACKETS_DIR):
