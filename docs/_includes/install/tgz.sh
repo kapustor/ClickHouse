@@ -1,4 +1,3 @@
-# TODO: fix arch, fix in docs/*/getting-started/install.md
 LATEST_VERSION=$(curl -s https://packages.clickhouse.com/tgz/stable/ | \
     grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -V -r | head -n 1)
 export LATEST_VERSION
