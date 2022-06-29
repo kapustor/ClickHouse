@@ -11,18 +11,17 @@ from urllib3.util.retry import Retry
 
 CLICKHOUSE_TAGS_URL = "https://api.github.com/repos/ClickHouse/ClickHouse/tags"
 
-CLICKHOUSE_COMMON_STATIC_DOWNLOAD_URL = "https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{type}/clickhouse-common-static_{version}_amd64.deb"
-CLICKHOUSE_COMMON_STATIC_DBG_DOWNLOAD_URL = "https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{type}/clickhouse-common-static-dbg_{version}_amd64.deb"
-CLICKHOUSE_SERVER_DOWNLOAD_URL = "https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{type}/clickhouse-server_{version}_all.deb"
-CLICKHOUSE_CLIENT_DOWNLOAD_URL = "https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{type}/clickhouse-client_{version}_all.deb"
-
-
+DOWNLOAD_PREFIX = (
+    "https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{type}/"
+)
 CLICKHOUSE_COMMON_STATIC_PACKET_NAME = "clickhouse-common-static_{version}_amd64.deb"
 CLICKHOUSE_COMMON_STATIC_DBG_PACKET_NAME = (
     "clickhouse-common-static-dbg_{version}_amd64.deb"
 )
-CLICKHOUSE_SERVER_PACKET_NAME = "clickhouse-server_{version}_all.deb"
-CLICKHOUSE_CLIENT_PACKET_NAME = "clickhouse-client_{version}_all.deb"
+CLICKHOUSE_SERVER_PACKET_NAME = "clickhouse-server_{version}_amd64.deb"
+CLICKHOUSE_SERVER_PACKET_FALLBACK = "clickhouse-server_{version}_all.deb"
+CLICKHOUSE_CLIENT_PACKET_NAME = "clickhouse-client_{version}_amd64.deb"
+CLICKHOUSE_CLIENT_PACKET_FALLBACK = "clickhouse-client_{version}_all.deb"
 
 PACKETS_DIR = "previous_release_package_folder/"
 VERSION_PATTERN = r"((?:\d+\.)?(?:\d+\.)?(?:\d+\.)?\d+-[a-zA-Z]*)"
@@ -113,43 +112,28 @@ def download_packets(release, dest_path=PACKETS_DIR):
 
     logging.info("Will download %s", release)
 
-    download_packet(
-        CLICKHOUSE_COMMON_STATIC_DOWNLOAD_URL.format(
-            version=release.version, type=release.type
-        ),
-        out_path=os.path.join(
-            dest_path,
-            CLICKHOUSE_COMMON_STATIC_PACKET_NAME.format(version=release.version),
-        ),
-    )
+    for pkg in (
+        CLICKHOUSE_COMMON_STATIC_PACKET_NAME,
+        CLICKHOUSE_COMMON_STATIC_DBG_PACKET_NAME,
+    ):
+        url = (DOWNLOAD_PREFIX + pkg).format(version=release.version, type=release.type)
+        pkg_name = pkg.format(version=release.version)
+        download_packet(url, pkg_name)
 
-    download_packet(
-        CLICKHOUSE_COMMON_STATIC_DBG_DOWNLOAD_URL.format(
-            version=release.version, type=release.type
-        ),
-        out_path=os.path.join(
-            dest_path,
-            CLICKHOUSE_COMMON_STATIC_DBG_PACKET_NAME.format(version=release.version),
-        ),
-    )
-
-    download_packet(
-        CLICKHOUSE_SERVER_DOWNLOAD_URL.format(
-            version=release.version, type=release.type
-        ),
-        out_path=os.path.join(
-            dest_path, CLICKHOUSE_SERVER_PACKET_NAME.format(version=release.version)
-        ),
-    )
-
-    download_packet(
-        CLICKHOUSE_CLIENT_DOWNLOAD_URL.format(
-            version=release.version, type=release.type
-        ),
-        out_path=os.path.join(
-            dest_path, CLICKHOUSE_CLIENT_PACKET_NAME.format(version=release.version)
-        ),
-    )
+    for pkg, fallback in (
+        (CLICKHOUSE_SERVER_PACKET_NAME, CLICKHOUSE_SERVER_PACKET_FALLBACK),
+        (CLICKHOUSE_CLIENT_PACKET_NAME, CLICKHOUSE_CLIENT_PACKET_FALLBACK),
+    ):
+        url = (DOWNLOAD_PREFIX + pkg).format(version=release.version, type=release.type)
+        pkg_name = pkg.format(version=release.version)
+        try:
+            download_packet(url, pkg_name)
+        except Exception:
+            url = (DOWNLOAD_PREFIX + fallback).format(
+                version=release.version, type=release.type
+            )
+            pkg_name = fallback.format(version=release.version)
+            download_packet(url, pkg_name)
 
 
 def download_previous_release(dest_path):
