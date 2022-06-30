@@ -102,7 +102,7 @@ def download_packet(url, out_path, retries=10, backoff_factor=0.3):
     session.mount("https://", adapter)
     response = session.get(url)
     response.raise_for_status()
-    print(url)
+    print(f"Download {url} to {out_path}")
     with open(out_path, "wb") as fd:
         fd.write(response.content)
 
@@ -113,12 +113,15 @@ def download_packets(release, dest_path=PACKETS_DIR):
 
     logging.info("Will download %s", release)
 
+    def get_dest_path(pkg_name):
+        return os.path.join(dest_path, pkg_name)
+
     for pkg in (
         CLICKHOUSE_COMMON_STATIC_PACKET_NAME,
         CLICKHOUSE_COMMON_STATIC_DBG_PACKET_NAME,
     ):
         url = (DOWNLOAD_PREFIX + pkg).format(version=release.version, type=release.type)
-        pkg_name = pkg.format(version=release.version)
+        pkg_name = get_dest_path(pkg.format(version=release.version))
         download_packet(url, pkg_name)
 
     for pkg, fallback in (
@@ -126,14 +129,14 @@ def download_packets(release, dest_path=PACKETS_DIR):
         (CLICKHOUSE_CLIENT_PACKET_NAME, CLICKHOUSE_CLIENT_PACKET_FALLBACK),
     ):
         url = (DOWNLOAD_PREFIX + pkg).format(version=release.version, type=release.type)
-        pkg_name = pkg.format(version=release.version)
+        pkg_name = get_dest_path(pkg.format(version=release.version))
         try:
             download_packet(url, pkg_name)
         except Exception:
             url = (DOWNLOAD_PREFIX + fallback).format(
                 version=release.version, type=release.type
             )
-            pkg_name = fallback.format(version=release.version)
+            pkg_name = get_dest_path(fallback.format(version=release.version))
             download_packet(url, pkg_name)
 
 
